@@ -1,0 +1,18 @@
+# File: requirements.txt
+
+# Core deep learning framework
+torch>=2.0.0
+
+# Hugging Face ecosystem for models, tokenizers, and PEFT
+transformers>=4.38.0
+peft>=0.9.0
+accelerate>=0.28.0
+bitsandbytes>=0.42.0  # Optional: for 8-bit/4-bit model quantization to save memory
+safetensors>=0.4.2
+
+# For data handling and progress bars
+numpy>=1.23.5
+tqdm>=4.65.0
+
+# For calculating logic diversity (embedding models)
+sentence-transformers>=2.2.2

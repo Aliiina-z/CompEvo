@@ -1,0 +1,36 @@
+# File: .gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# IDE and OS specific files
+.idea/
+.vscode/
+*.DS_Store
+
+# Datasets - often large and should not be version controlled
+/data/*.json
+/data/*.csv
+
+# Model checkpoints and logs
+/checkpoints/
+/logs/
+*.pt
+*.pth
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
