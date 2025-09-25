@@ -55,7 +55,10 @@ Our framework is built using PyTorch and the Hugging Face ecosystem.
     python train.py
     ```
 
-You will see a confirmation of the selected mode in the console output. The script will then proceed with the training and evolution pipeline.
+You will see a confirmation of the selected mode in the console output. The script will automatically:
+- Use real data if `data/real_dataset.json` exists
+- Fall back to virtual data if no real data is found
+- Proceed with the training and evolution pipeline
 
 ## ⚙️ Configuration and Environment Modes
 
@@ -82,6 +85,11 @@ The repository is organized as follows for clarity and modularity:
 llm-egt-forecaster/
 ├── configs/             # All hyperparameters and configurations
 ├── data/                # Data generation scripts
+│   ├── virtual_data_generator.py  # Virtual data generator for testing
+│   └── data_generator.py          # Real data loader and converter
+├── docs/                # Documentation
+│   ├── ARCHITECTURE_CN.md         # Chinese architecture docs
+│   └── ARCHITECTURE_EN.md         # English architecture docs
 ├── src/                 # Main source code
 │   ├── agent.py           # Definition of the Agent class
 │   ├── dataset.py         # PyTorch Dataset and DataLoader
@@ -97,11 +105,43 @@ llm-egt-forecaster/
 
 ## 📈 Using Your Own Data
 
-To adapt this framework for your own news-driven time series data, you will need to:
+The framework supports both virtual and real data sources:
 
-1.  **Format your data:** Prepare a JSON file where each entry contains a `time_series` list, a `candidate_news` list for the corresponding period, and a `ground_truth` list of future values.
-2.  **Modify the Dataset class:** Update `src/dataset.py` to correctly parse your custom data format.
-3.  **Launch training:** Run `train.py` as before. The framework is designed to be agnostic to the underlying data source.
+### Virtual Data (Default)
+- Automatically generated for testing and demonstration
+- Uses synthetic time series with simulated news impact
+- Perfect for understanding the framework logic
+
+### Real Data
+To use your own real-world data:
+
+1.  **Prepare your data:** Create a JSON file with instruction/input/output format:
+    ```json
+    {
+      "instruction": "The historical load data is: 1.2, 1.5, 1.8, ... The region...",
+      "input": "Your news text here...",
+      "output": "2.1, 2.3, 2.5, 2.7, 2.9"
+    }
+    ```
+
+2.  **Convert to standard format:** Use the built-in data converter:
+    ```bash
+    python -m llm_egt_forecaster.data.data_generator
+    ```
+
+3.  **Place your data:** Put the converted file as `data/real_dataset.json`
+
+4.  **Launch training:** Run `python train.py` - the framework will automatically detect and use real data if available, otherwise fall back to virtual data.
+
+### Data Format
+The framework expects data in this standard format:
+```json
+{
+  "time_series": [list of numbers],
+  "candidate_news": [list of news strings],
+  "ground_truth": [list of future values]
+}
+```
 
 ## 📜 Citation
 

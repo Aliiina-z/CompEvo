@@ -7,6 +7,7 @@ import os
 
 from llm_egt_forecaster.configs import base_config
 from llm_egt_forecaster.data.virtual_data_generator import VirtualDataGenerator
+from llm_egt_forecaster.data.data_generator import DataGenerator
 from llm_egt_forecaster.src.dataset import get_dataloader
 from llm_egt_forecaster.src.models.evolutionary_framework import EvolutionaryFramework
 from llm_egt_forecaster.src.engine.loss import EvolutionaryLoss
@@ -43,9 +44,18 @@ def main():
     print("Preparing data...")
     data_filepath = "data/virtual_dataset.json"
 
-    # Ensure the virtual dataset is generated
-    generator = VirtualDataGenerator(config)
-    generator.generate_dataset(config.NUM_VIRTUAL_SAMPLES, data_filepath)
+    # Check if real data exists, otherwise generate virtual data
+    if os.path.exists("data/real_dataset.json"):
+        print("Found real dataset, using it for training...")
+        data_filepath = "data/real_dataset.json"
+        # Convert real data to standard format if needed
+        real_generator = DataGenerator(config, filepath=data_filepath)
+        real_generator.load_dataset()
+    else:
+        print("No real dataset found, generating virtual data...")
+        # Ensure the virtual dataset is generated
+        generator = VirtualDataGenerator(config)
+        generator.generate_dataset(config.NUM_VIRTUAL_SAMPLES, data_filepath)
 
     tokenizer = AutoTokenizer.from_pretrained(config.TOKENIZER_PATH)
     if tokenizer.pad_token is None:

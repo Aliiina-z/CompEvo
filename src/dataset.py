@@ -9,6 +9,7 @@ from transformers import AutoTokenizer
 
 from llm_egt_forecaster.configs import base_config
 from llm_egt_forecaster.data.virtual_data_generator import VirtualDataGenerator
+from llm_egt_forecaster.data.data_generator import DataGenerator
 
 class NewsTimeSeriesDataset(Dataset):
     """
