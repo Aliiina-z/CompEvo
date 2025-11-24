@@ -15,7 +15,6 @@ Our work introduces a novel multi-agent framework grounded in Evolutionary Game 
 
 -   **Competition-Driven Evolutionary Framework**: We translate core EGT principles—selection, mutation, and adaptation—into a unified, end-to-end differentiable loss function, allowing LLM agents to evolve through standard gradient-based optimization.
 -   **Enhanced Agent Capabilities**: The evolutionary dynamics foster strategic diversity and robustness, significantly improving agents' abilities in **multi-source heterogeneity comprehension** and **robust signal discernment**.
--   **State-of-the-Art Performance**: Experimental results demonstrate that our framework consistently outperforms existing single-agent and multi-agent baselines in both forecasting accuracy and strategic diversity.
 -   **Theoretical Soundness**: We provide theoretical arguments for the stability of our system, suggesting the existence of a Bayesian Nash Equilibrium (BNE) and the potential for achieving a sublinear regret bound.
 
 ## 🛠️ Installation
