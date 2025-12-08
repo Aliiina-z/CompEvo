@@ -148,15 +148,201 @@ class Trainer:
                 'adv_mean': f'{advantages.mean().item():.3f}'
             })
             
+# File: src/engine/trainer.py (Modified for Policy Gradient)
+
+import torch
+from torch.optim import AdamW
+from tqdm import tqdm
+
+from llm_egt_forecaster.configs import base_config
+from llm_egt_forecaster.src.models.evolutionary_framework import EvolutionaryFramework
+from llm_egt_forecaster.src.engine.loss import EvolutionaryLoss
+from llm_egt_forecaster.src.models.logic_generator import LogicGenerator
+
+class Trainer:
+    # Simplified optimizer by leveraging nn.Module parameter collection
+    def __init__(self, framework: EvolutionaryFramework, loss_fn: EvolutionaryLoss, 
+                 logic_generator: LogicGenerator, dataloader, val_dataloader, config):
+        self.framework = framework
+        self.loss_fn = loss_fn
+        self.logic_generator = logic_generator
+        self.dataloader = dataloader
+        self.val_dataloader = val_dataloader
+        self.config = config
+
+        # Major simplification: grab all parameters from the framework
+        self.optimizer = AdamW(
+            self.framework.parameters(),
+            lr=config.LEARNING_RATE,
+            weight_decay=config.WEIGHT_DECAY
+        )
+        self.agents = self.framework.agents
+    
+    # (_update_agents_after_batch is the same)
+    def _update_agents_after_batch(self, rewards_tensor):
+        avg_rewards = rewards_tensor.mean(dim=1).detach().cpu().numpy()
+        for i, agent in enumerate(self.agents):
+            agent.update_fitness(avg_rewards[i], self.config.FITNESS_EMA_BETA)
+
+    def validate(self):
+        """Validate the model on the validation set."""
+        self.framework.eval()
+        total_val_loss = 0
+        total_mse = 0
+        total_mae = 0
+        num_batches = 0
+        
+        with torch.no_grad():
+            for batch in tqdm(self.val_dataloader, desc="Validating"):
+                framework_output = self.framework(batch)
+                ground_truth = batch["ground_truth"].to(self.config.DEVICE)
+                
+                # Calculate validation loss (prediction only, no PG components)
+                loss_dict = self.loss_fn(framework_output, ground_truth, self.agents, pg_components=None)
+                total_val_loss += loss_dict["total_loss"].item()
+                
+                # Calculate metrics
+                predictions = framework_output["aggregated_prediction"]
+                mse = torch.nn.functional.mse_loss(predictions, ground_truth)
+                mae = torch.nn.functional.l1_loss(predictions, ground_truth)
+                
+                total_mse += mse.item()
+                total_mae += mae.item()
+                num_batches += 1
+        
+        avg_val_loss = total_val_loss / num_batches
+        avg_mse = total_mse / num_batches
+        avg_mae = total_mae / num_batches
+        avg_rmse = avg_mse ** 0.5
+        
+        print(f"\n--- Validation Results ---")
+        print(f"Val Loss: {avg_val_loss:.4f}")
+        print(f"Val MSE: {avg_mse:.4f}")
+        print(f"Val RMSE: {avg_rmse:.4f}")
+        print(f"Val MAE: {avg_mae:.4f}")
+        
+        return {
+            "val_loss": avg_val_loss,
+            "val_mse": avg_mse,
+            "val_rmse": avg_rmse,
+            "val_mae": avg_mae
+        }
+    
+    def train_epoch(self, epoch_num):
+        self.framework.train()
+        total_loss = 0
+        progress_bar = tqdm(self.dataloader, desc=f"Epoch {epoch_num+1}/{self.config.NUM_EPOCHS}")
+        
+        for batch in progress_bar:
+            # --- START OF POLICY GRADIENT STEP ---
+            
+            # 1. Generate new candidate logics and their log probabilities for ALL agents
+            new_logics = []
+            log_probs = []
+            
+            original_logics = [agent.logic for agent in self.agents] # Store original logics
+            
+            for agent in self.agents:
+                # The logic generator now needs to return log_prob as well
+                new_logic, log_prob = self.logic_generator.generate(agent, self.agents, with_log_prob=True)
+                new_logics.append(new_logic)
+                log_probs.append(log_prob)
+                agent.update_logic(new_logic) # Temporarily update agent logic for evaluation
+
+            log_probs_tensor = torch.stack(log_probs)
+
+            # 2. Evaluate the performance WITH THE NEW LOGICS
+            # This is the "on-policy" evaluation step
+            framework_output = self.framework(batch)
+            rewards_new_logic = framework_output["agent_rewards"].mean(dim=1) # Avg reward over batch
+            
+            # 3. Calculate Advantage
+            # Advantage = Reward(new_logic) - Baseline.
+            # A simple baseline is the average reward of the group (GRPO).
+            baseline = rewards_new_logic.mean()
+            advantages = rewards_new_logic - baseline
+            advantages = advantages.detach() # Treat advantages as constants in the loss
+
+            # --- END OF POLICY GRADIENT STEP ---
+            
+            # 4. Calculate the total loss, now including L_PG
+            ground_truth = batch["ground_truth"].to(self.config.DEVICE)
+            pg_components = {
+                "new_logics": new_logics,
+                "log_probs": log_probs_tensor,
+                "advantages": advantages
+            }
+            loss_dict = self.loss_fn(framework_output, ground_truth, self.agents, pg_components)
+            loss = loss_dict["total_loss"]
+            
+            # 5. Backward pass and optimization
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            
+            # 6. Update agent states (fitness) using the new rewards
+            self._update_agents_after_batch(framework_output["agent_rewards"])
+            
+            # 7. Permanently adopt the new logics (or you could have a rule for adoption)
+            # For simplicity, we always adopt the generated logic.
+            
+            # Restore original logics for the next generation step to be clean
+            # (or keep them, which means evolution is continuous)
+            # For stability, it's often better to start fresh from the updated state.
+            # We will keep the new logics, making the process continuous.
+            
+            total_loss += loss.item()
+            progress_bar.set_postfix({
+                'loss': f'{loss.item():.4f}',
+                'l_pg': f'{loss_dict["l_pg"]:.4f}',
+                'adv_mean': f'{advantages.mean().item():.3f}'
+            })
+            
         avg_loss = total_loss / len(self.dataloader)
         print(f"\nEpoch {epoch_num+1} Summary: Average Loss = {avg_loss:.4f}")
         print("Final Logics for this epoch:")
         for agent in self.agents:
             print(f"- Agent {agent.id}: Fitness={agent.fitness:.4f}, Logic='{agent.logic}'")
 
+    def save_checkpoint(self, epoch, val_loss, filepath="checkpoints/best_model.pt"):
+        """Save model checkpoint."""
+        import os
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        checkpoint = {
+            'epoch': epoch,
+            'framework_state_dict': self.framework.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'val_loss': val_loss,
+            'config': self.config,
+            'agent_logics': [agent.logic for agent in self.agents],
+            'agent_fitness': [agent.fitness for agent in self.agents]
+        }
+        
+        torch.save(checkpoint, filepath)
+        print(f"💾 Checkpoint saved to {filepath}")
+    
+    def load_checkpoint(self, filepath="checkpoints/best_model.pt"):
+        """Load model checkpoint."""
+        checkpoint = torch.load(filepath, map_location=self.config.DEVICE)
+        
+        self.framework.load_state_dict(checkpoint['framework_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        # Restore agent states
+        for i, agent in enumerate(self.agents):
+            agent.logic = checkpoint['agent_logics'][i]
+            agent.fitness = checkpoint['agent_fitness'][i]
+        
+        print(f"✅ Checkpoint loaded from {filepath}")
+        print(f"   Epoch: {checkpoint['epoch']}, Val Loss: {checkpoint['val_loss']:.4f}")
+        
+        return checkpoint['epoch'], checkpoint['val_loss']
+
     def train(self):
         print("--- Starting Training with Policy Gradient ---")
         best_val_loss = float('inf')
+        best_epoch = 0
         
         for epoch in range(self.config.NUM_EPOCHS):
             # Training
@@ -165,13 +351,21 @@ class Trainer:
             # Validation
             val_metrics = self.validate()
             
-            # Track best model
+            # Track and save best model
             if val_metrics["val_loss"] < best_val_loss:
                 best_val_loss = val_metrics["val_loss"]
+                best_epoch = epoch
                 print(f"✓ New best validation loss: {best_val_loss:.4f}")
-                # TODO: Save best model checkpoint here if needed
+                
+                # Save best model checkpoint
+                self.save_checkpoint(
+                    epoch=epoch,
+                    val_loss=best_val_loss,
+                    filepath="checkpoints/best_model.pt"
+                )
             
             print("-" * 50)
         
         print("--- Training Finished ---")
-        print(f"Best Validation Loss: {best_val_loss:.4f}")
+        print(f"Best Validation Loss: {best_val_loss:.4f} (Epoch {best_epoch + 1})")
+        print(f"Best model saved at: checkpoints/best_model.pt")
