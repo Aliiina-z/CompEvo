@@ -69,7 +69,7 @@ The script will:
 Our framework is designed to be adaptable to different hardware environments. You can easily switch between modes by editing the `MODE` variable in `configs/base_config.py`.
 
 ### Modes
--   **`GPU_LLAMA` (Default)**: Recommended for users with a CUDA-enabled NVIDIA GPU (>=16GB VRAM recommended). This mode runs the powerful `Llama-2-7b-hf` model with 4-bit quantization for efficient memory usage. It delivers the best performance and is required to fully replicate the paper's results.
+-   **`GPU_LLAMA` (Default)**: Recommended for users with a CUDA-enabled NVIDIA GPU (>=16GB VRAM recommended). This mode runs the powerful `Llama-3.1-8B` model with 4-bit quantization for efficient memory usage. It delivers the best performance and is required to fully replicate the paper's results.
 
 -   **`CPU_DEBUG`**: For users without a suitable GPU or for quick debugging. This mode runs the smaller `distilgpt2` model on the CPU. It is functionally identical and perfect for verifying the logic of the evolutionary framework, but the forecasting quality will be lower.
 

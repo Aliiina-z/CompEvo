@@ -104,7 +104,7 @@ class EvolutionaryFramework(nn.Module):
                 ) for i in range(batch_size)
             ]
             inputs = self.tokenizer(
-                prompts, return_tensors="pt", padding=True, truncation=True, max_length=1024
+                prompts, return_tensors="pt", padding=True, truncation=True, max_length=self.config.MAX_LENGTH
             ).to(self.device)
 
             agent.train()

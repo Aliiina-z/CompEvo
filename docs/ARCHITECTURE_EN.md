@@ -13,7 +13,8 @@ llm_egt_forecaster/
 │   └── base_config.py         # Base configuration with GPU/CPU modes
 ├── data/                      # Data Module
 │   ├── __init__.py
-│   └── virtual_data_generator.py  # Virtual data generator
+│   ├── data_generator.py          # Data generator
+│   └── real_dataset.json          # Dataset file
 ├── src/                       # Core Source Code
 │   ├── __init__.py
 │   ├── agent.py              # Agent definition
@@ -48,27 +49,35 @@ llm_egt_forecaster/
 **Key Files**:
 - `base_config.py`: Base configuration with GPU_LLAMA and CPU_DEBUG modes
 
-**Main Configurations**:
+**Main Configurations** (Aligned with Paper):
 ```python
 MODE = 'GPU_LLAMA'  # or 'CPU_DEBUG'
-BASE_LLM_MODEL = "meta-llama/Llama-2-7b-hf"  # or "distilgpt2"
-USE_QUANTIZATION = True  # Whether to use quantization
-NUM_AGENTS = 5  # Number of agents
+BASE_LLM_MODEL = "meta-llama/Llama-3.1-8B"  # Llama 3.1 8B (Paper)
+USE_QUANTIZATION = True  # 4-bit quantization
+MAX_LENGTH = 4096  # Context window (Paper)
+NUM_AGENTS = 10  # Number of agents (Paper)
 NUM_EPOCHS = 3  # Number of training epochs
 ```
 
 ### 2. Data Module (data/)
 
-**Function**: Data generation and loading
+**Function**: Data loading and transformation
 
 **Key Files**:
-- `virtual_data_generator.py`: Generates virtual test data
+- `data_generator.py`: Load and transform data
+- `real_dataset.json`: Dataset file
 
 **Data Format**:
 ```json
 {
   "time_series": [list of numbers],
-  "candidate_news": [list of news strings],
+  "candidate_news": [
+    {
+      "summary": "news summary",
+      "publication_time": "publication time",
+      "category": "category"
+    }
+  ],
   "ground_truth": [list of future values]
 }
 ```
@@ -149,7 +158,7 @@ class EvolutionaryFramework(nn.Module):
 
 ```
 1. Data Loading
-   virtual_data_generator.py → dataset.py → DataLoader
+   data_generator.py → dataset.py → DataLoader
 
 2. Forward Pass
    EvolutionaryFramework → NewsSelector → Agent → LogicGenerator
@@ -196,34 +205,44 @@ class EvolutionaryFramework(nn.Module):
 ### Environment Modes
 
 **GPU_LLAMA Mode** (Recommended for production):
-- Uses Llama-2-7B model
+- Uses Llama-3.1-8B model (Paper-aligned)
 - 4-bit quantization to save memory
 - Requires >=16GB VRAM
+- Context window: 4096 tokens
 
 **CPU_DEBUG Mode** (For debugging):
 - Uses distilgpt2 model
 - CPU inference
 - Suitable for quick logic verification
 
-### Key Parameters
+### Key Parameters (Paper-Aligned)
 
 ```python
 # Model Configuration
-BASE_LLM_MODEL = "meta-llama/Llama-2-7b-hf"
+BASE_LLM_MODEL = "meta-llama/Llama-3.1-8B"  # Upgraded from Llama-2-7B
 USE_QUANTIZATION = True
+MAX_LENGTH = 4096  # Context window
 LORA_RANK = 16
 LORA_ALPHA = 32
+LORA_TARGET_MODULES = [  # All linear projection layers
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "gate_proj", "up_proj", "down_proj"
+]
 
 # Training Configuration
-NUM_AGENTS = 5
+NUM_AGENTS = 10  # Increased from 5
 NUM_EPOCHS = 3
 BATCH_SIZE = 2
-LEARNING_RATE = 2e-5
+LEARNING_RATE = 1e-4  # Updated from 2e-5
+TEMPERATURE = 0.5  # Optimal value from paper
 
-# Loss Weights
+# Loss Weights (Optimized)
 LAMBDA_STRATEGY = 1.0
-LAMBDA_DIVERSITY = 0.5
+LAMBDA_DIVERSITY = 0.4  # Optimal sweet spot
 LAMBDA_PRUNING = 0.1
+
+# Token Limits
+MAX_NEWS_TOKENS = 2048  # News portion limit
 ```
 
 ## Contributing Guide
