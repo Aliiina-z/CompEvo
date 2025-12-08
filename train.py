@@ -6,7 +6,6 @@ import numpy as np
 import os
 
 from llm_egt_forecaster.configs import base_config
-from llm_egt_forecaster.data.virtual_data_generator import VirtualDataGenerator
 from llm_egt_forecaster.data.data_generator import DataGenerator
 from llm_egt_forecaster.src.dataset import get_dataloader
 from llm_egt_forecaster.src.models.evolutionary_framework import EvolutionaryFramework
@@ -38,24 +37,23 @@ def main():
     print(f"Base LLM: {config.BASE_LLM_MODEL}")
     print(f"Number of Agents: {config.NUM_AGENTS}")
     print(f"Number of Epochs: {config.NUM_EPOCHS}")
+    print(f"News Selector Method: {config.NEWS_SELECTOR_METHOD}")
     print("-" * 21)
 
     # --- 2. Prepare Data ---
-    print("Preparing data...")
-    data_filepath = "data/virtual_dataset.json"
+    print("Preparing real data...")
+    data_filepath = "data/real_dataset.json"
 
-    # Check if real data exists, otherwise generate virtual data
-    if os.path.exists("data/real_dataset.json"):
-        print("Found real dataset, using it for training...")
-        data_filepath = "data/real_dataset.json"
-        # Convert real data to standard format if needed
-        real_generator = DataGenerator(config, filepath=data_filepath)
-        real_generator.load_dataset()
-    else:
-        print("No real dataset found, generating virtual data...")
-        # Ensure the virtual dataset is generated
-        generator = VirtualDataGenerator(config)
-        generator.generate_dataset(config.NUM_VIRTUAL_SAMPLES, data_filepath)
+    if not os.path.exists(data_filepath):
+        raise FileNotFoundError(
+            f"Real dataset not found at {data_filepath}. "
+            "Please prepare your real dataset first."
+        )
+
+    # Load and convert real data to standard format
+    print(f"Loading real dataset from {data_filepath}...")
+    real_generator = DataGenerator(config, filepath=data_filepath)
+    real_generator.load_dataset()
 
     tokenizer = AutoTokenizer.from_pretrained(config.TOKENIZER_PATH)
     if tokenizer.pad_token is None:

@@ -39,8 +39,8 @@ class DataGenerator:
                 # 2. 从 output 里提取未来负荷序列
                 ground_truth = [float(x) for x in sample["output"].split(",")]
 
-                # 3. candidate_news：这里用 input 整段文字代替
-                candidate_news = [sample["input"]]
+                # 3. 解析 input 中的新闻为 dict 格式
+                candidate_news = self._parse_news_from_input(sample["input"])
 
                 # 4. 构造标准样本
                 converted_samples.append({
@@ -60,6 +60,41 @@ class DataGenerator:
             json.dump(converted_samples, f, indent=2, ensure_ascii=False)
 
         return converted_samples
+
+    def _parse_news_from_input(self, input_text):
+        """
+        解析input文本,提取新闻为dict列表格式。
+        
+        示例input格式:
+        "...In 2019-01-03 16:40:00, the news that had the Long-Term Effect..."
+        
+        返回格式:
+        [{"summary": "...", "publication_time": "2019-01-03 16:40:00", "category": "Long-Term"}]
+        """
+        import re
+        
+        news_list = []
+        
+        # 匹配模式: "In YYYY-MM-DD HH:MM:SS, the news ... is that CONTENT"
+        pattern = r'In (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}), the news.*?is that ([^.]+\.)'
+        matches = re.findall(pattern, input_text)
+        
+        for time_str, summary in matches:
+            news_list.append({
+                "summary": summary.strip(),
+                "publication_time": time_str,
+                "category": "News"  # 可以进一步解析Long-Term/Short-Term等
+            })
+        
+        # 如果没有匹配到新闻,返回整段input作为单条新闻
+        if not news_list:
+            news_list = [{
+                "summary": input_text[:500],  # 截取前500字符
+                "publication_time": "Unknown",
+                "category": "General"
+            }]
+        
+        return news_list
 
 
 if __name__ == "__main__":

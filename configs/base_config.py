@@ -1,6 +1,7 @@
 # File: configs/base_config.py (Modified for Environment Friendliness)
 
 import torch
+import os
 
 # --- MODE SELECTION ---
 # 'GPU_LLAMA' -> For users with a powerful CUDA GPU, runs Llama-2-7B with 4-bit quantization.
@@ -72,6 +73,20 @@ LAMBDA_PRUNING = 0.1
 TS_LENGTH = 50
 FUTURE_STEPS = 5
 NUM_VIRTUAL_SAMPLES = 100
+
+# --- News Filtering Configurations ---
+# 新闻筛选方法: 'cosine' (本地embedding) 或 'api' (OpenAI)
+NEWS_SELECTOR_METHOD = 'cosine'  # 默认使用cosine,避免API调用成本
+
+# Cosine方法配置
+NEWS_COSINE_MODEL = 'all-MiniLM-L6-v2'  # SentenceTransformer模型
+NEWS_COSINE_THRESHOLD = 0.3  # 相似度阈值
+NEWS_COSINE_TOP_K = 3  # 选择top-k条新闻
+
+# API方法配置 (仅当NEWS_SELECTOR_METHOD='api'时使用)
+NEWS_API_KEY = os.getenv("OPENAI_API_KEY")  # 从环境变量读取
+NEWS_API_BASE = os.getenv("OPENAI_API_BASE")  # 可选,自定义API base URL
+NEWS_API_MODEL = "gpt-3.5-turbo"  # 使用的OpenAI模型
 
 # --- Prompt Engineering ---
 PROMPT_TEMPLATE = """Instruction: You are an expert time series forecaster. Your task is to predict the next {future_steps} values of a sequence based on its history and relevant news events. Analyze the combined information to make an accurate forecast.

@@ -47,17 +47,16 @@ Our framework is built using PyTorch and the Hugging Face ecosystem.
 
 ## ▶️ Getting Started: Running a Demo
 
-1.  Select your mode: Open `configs/base_config.py` and set the `MODE` variable to either `'GPU_LLAMA'` or `'CPU_DEBUG'` based on your hardware.
+1.  **Prepare your data:** Ensure you have real dataset at `data/real_dataset.json` (see Data Preparation section below).
 
-2.  Run the script:
+2.  **Select your mode:** Open `configs/base_config.py` and set the `MODE` variable to either `'GPU_LLAMA'` or `'CPU_DEBUG'` based on your hardware.
+
+3.  **Run the script:**
     ```bash
     python train.py
     ```
 
-You will see a confirmation of the selected mode in the console output. The script will automatically:
-- Use real data if `data/real_dataset.json` exists
-- Fall back to virtual data if no real data is found
-- Proceed with the training and evolution pipeline
+The script will load your real dataset and proceed with the training and evolution pipeline.
 
 ## ⚙️ Configuration and Environment Modes
 
@@ -76,6 +75,19 @@ In addition to the mode, you can customize:
 -   `NUM_EPOCHS`, `BATCH_SIZE`, `LEARNING_RATE`: Standard training hyperparameters.
 -   `LAMBDA_DIVERSITY`, `LAMBDA_PRUNING`: Weights for the evolutionary loss components, controlling the balance between exploration and exploitation.
 
+### News Filtering Configuration
+Our framework supports dual-mode news filtering to help agents select relevant news:
+
+-   `NEWS_SELECTOR_METHOD`: Choose between `'cosine'` (local embedding-based) or `'api'` (OpenAI-based) filtering.
+-   **Cosine Mode** (Default): Uses semantic similarity with SentenceTransformer models. No API costs.
+    -   `NEWS_COSINE_MODEL`: Embedding model (default: `'all-MiniLM-L6-v2'`)
+    -   `NEWS_COSINE_THRESHOLD`: Similarity threshold (default: `0.3`)
+    -   `NEWS_COSINE_TOP_K`: Number of news to select (default: `3`)
+-   **API Mode**: Uses OpenAI GPT for intelligent news selection based on agent logic.
+    -   `NEWS_API_KEY`: Set via environment variable `OPENAI_API_KEY`
+    -   `NEWS_API_MODEL`: OpenAI model to use (default: `'gpt-3.5-turbo'`)
+    -   `NEWS_API_BASE`: Optional custom API base URL
+
 ## 📂 Project Structure
 
 The repository is organized as follows for clarity and modularity:
@@ -84,7 +96,6 @@ The repository is organized as follows for clarity and modularity:
 llm-egt-forecaster/
 ├── configs/             # All hyperparameters and configurations
 ├── data/                # Data generation scripts
-│   ├── virtual_data_generator.py  # Virtual data generator for testing
 │   └── data_generator.py          # Real data loader and converter
 ├── docs/                # Documentation
 │   ├── ARCHITECTURE_CN.md         # Chinese architecture docs
@@ -102,17 +113,9 @@ llm-egt-forecaster/
 └── train.py             # Main entry point to start training
 ```
 
-## 📈 Using Your Own Data
+## 📈 Data Preparation
 
-The framework supports both virtual and real data sources:
-
-### Virtual Data (Default)
-- Automatically generated for testing and demonstration
-- Uses synthetic time series with simulated news impact
-- Perfect for understanding the framework logic
-
-### Real Data
-To use your own real-world data:
+The framework requires real-world data for training.
 
 1.  **Prepare your data:** Create a JSON file with instruction/input/output format:
     ```json
@@ -130,17 +133,30 @@ To use your own real-world data:
 
 3.  **Place your data:** Put the converted file as `data/real_dataset.json`
 
-4.  **Launch training:** Run `python train.py` - the framework will automatically detect and use real data if available, otherwise fall back to virtual data.
+4.  **Launch training:** Run `python train.py`
 
 ### Data Format
 The framework expects data in this standard format:
 ```json
 {
-  "time_series": [list of numbers],
-  "candidate_news": [list of news strings],
-  "ground_truth": [list of future values]
+  "time_series": [1.2, 1.5, 1.8, ...],
+  "candidate_news": [
+    {
+      "summary": "Market sentiment is optimistic...",
+      "publication_time": "2024-01-01 09:00:00",
+      "category": "Business"
+    },
+    {
+      "summary": "Heavy storms damaged power lines...",
+      "publication_time": "2024-01-01 10:30:00",
+      "category": "Weather"
+    }
+  ],
+  "ground_truth": [2.1, 2.3, 2.5, 2.7, 2.9]
 }
 ```
+
+**Note**: `candidate_news` should be a list of dictionaries with `summary`, `publication_time`, and `category` fields for optimal news filtering performance.
 
 ## 📜 Citation
 

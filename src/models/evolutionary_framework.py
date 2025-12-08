@@ -66,11 +66,20 @@ class EvolutionaryFramework(nn.Module):
         self.agents = nn.ModuleList([
             Agent(agent_id=i, base_llm_model=self.base_model, lora_config=lora_config, device=self.device)
             for i in range(config.NUM_AGENTS)
-        ])
-        
-        # --- NEW: Initialize the NewsSelector ---
-        # We initialize it once and reuse it for all agents.
-        self.news_selector = NewsSelector(device=self.device)
+        ])\r
+        \r
+        # --- NEW: Initialize the NewsSelector with config parameters ---\r
+        print(f"Initializing NewsSelector with method: {config.NEWS_SELECTOR_METHOD}")\r
+        self.news_selector = NewsSelector(\r
+            method=config.NEWS_SELECTOR_METHOD,\r
+            model_name=config.NEWS_COSINE_MODEL,\r
+            device=self.device,\r
+            threshold=config.NEWS_COSINE_THRESHOLD,\r
+            top_k=config.NEWS_COSINE_TOP_K,\r
+            api_key=config.NEWS_API_KEY,\r
+            api_base=config.NEWS_API_BASE,\r
+            api_model=config.NEWS_API_MODEL\r
+        )
 
     # --- REPLACED: The old _select_news_for_agent method is now completely replaced ---
     # The new logic is now handled by the self.news_selector instance.

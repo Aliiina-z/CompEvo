@@ -24,7 +24,10 @@ class Agent(nn.Module):  # --- FIXED: Inherit from nn.Module ---
         self.device = device
 
         # --- Core Attributes (non-parameters) ---
-        self.logic = f"Initial analysis logic for Agent {self.id}: Focus on general economic news."
+        self.logic = (
+            f"Agent {self.id}: Analyze news related to weather conditions, economic activities, "
+            "energy policies, infrastructure events, and social behaviors that may impact electricity load consumption."
+        )
         self.fitness = 0.0
         self.last_reward = 0.0
 

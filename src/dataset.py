@@ -8,7 +8,6 @@ from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
 from llm_egt_forecaster.configs import base_config
-from llm_egt_forecaster.data.virtual_data_generator import VirtualDataGenerator
 from llm_egt_forecaster.data.data_generator import DataGenerator
 
 class NewsTimeSeriesDataset(Dataset):
@@ -24,11 +23,10 @@ class NewsTimeSeriesDataset(Dataset):
             with open(data_path, 'r', encoding='utf-8') as f:
                 self.data = json.load(f)
         except FileNotFoundError:
-            print(f"Data file not found at {data_path}. Please generate it first.")
-            # Optionally, you could trigger generation here.
-            # generator = VirtualDataGenerator(config)
-            # self.data = generator.generate_dataset(config.NUM_VIRTUAL_SAMPLES, data_path)
-            raise
+            raise FileNotFoundError(
+                f"Data file not found at {data_path}. "
+                "Please prepare your real dataset first."
+            )
 
     def __len__(self):
         return len(self.data)
@@ -63,12 +61,13 @@ def get_dataloader(data_path, tokenizer, config, batch_size, shuffle=True):
 if __name__ == '__main__':
     # --- This block is for testing the Dataset and DataLoader ---
     
-    # 1. Ensure data exists
-    data_filepath = "data/virtual_dataset.json"
+    # 1. Ensure real data exists
+    data_filepath = "data/real_dataset.json"
     if not os.path.exists(data_filepath):
-        print("Generating virtual data for the test...")
-        generator = VirtualDataGenerator(base_config)
-        generator.generate_dataset(base_config.NUM_VIRTUAL_SAMPLES, data_filepath)
+        raise FileNotFoundError(
+            f"Real dataset not found at {data_filepath}. "
+            "Please prepare your real dataset using DataGenerator first."
+        )
 
     # 2. Initialize tokenizer
     tokenizer = AutoTokenizer.from_pretrained(base_config.TOKENIZER_PATH)
@@ -95,11 +94,10 @@ if __name__ == '__main__':
     
     print("\nCandidate News (first sample in batch):")
     for i, news in enumerate(batch["candidate_news"]):
-        # Note: candidate_news is a list of lists of strings.
-        # dataloader stacks them weirdly. Let's just print the first sample's news.
+        # Note: candidate_news is a list of lists of dicts.
         if i == 0:
             for news_item in news:
-                 print(f"  - {news_item}")
+                 print(f"  - {news_item.get('summary', str(news_item))[:100]}...")
     
     print("\nGround Truth Tensor (first sample in batch):")
     print(batch["ground_truth"][0])
