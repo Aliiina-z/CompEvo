@@ -59,14 +59,29 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # Create train and validation dataloaders (8:2 split)
     train_dataloader = get_dataloader(
         data_path=data_filepath,
         tokenizer=tokenizer,
         config=config,
         batch_size=config.BATCH_SIZE,
-        shuffle=True
+        shuffle=True,
+        split='train',
+        train_ratio=0.8
     )
-    print(f"Data loaded with {len(train_dataloader.dataset)} samples.")
+    
+    val_dataloader = get_dataloader(
+        data_path=data_filepath,
+        tokenizer=tokenizer,
+        config=config,
+        batch_size=config.BATCH_SIZE,
+        shuffle=False,
+        split='val',
+        train_ratio=0.8
+    )
+    
+    print(f"Training samples: {len(train_dataloader.dataset)}")
+    print(f"Validation samples: {len(val_dataloader.dataset)}")
 
     # --- 3. Initialize Model Components ---
     print("Initializing model components...")
@@ -87,6 +102,7 @@ def main():
         loss_fn=loss_fn,
         logic_generator=logic_generator,
         dataloader=train_dataloader,
+        val_dataloader=val_dataloader,
         config=config
     )
 

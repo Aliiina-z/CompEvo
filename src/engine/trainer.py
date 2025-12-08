@@ -12,11 +12,12 @@ from llm_egt_forecaster.src.models.logic_generator import LogicGenerator
 class Trainer:
     # Simplified optimizer by leveraging nn.Module parameter collection
     def __init__(self, framework: EvolutionaryFramework, loss_fn: EvolutionaryLoss, 
-                 logic_generator: LogicGenerator, dataloader, config):
+                 logic_generator: LogicGenerator, dataloader, val_dataloader, config):
         self.framework = framework
         self.loss_fn = loss_fn
         self.logic_generator = logic_generator
         self.dataloader = dataloader
+        self.val_dataloader = val_dataloader
         self.config = config
 
         # Major simplification: grab all parameters from the framework
@@ -33,6 +34,50 @@ class Trainer:
         for i, agent in enumerate(self.agents):
             agent.update_fitness(avg_rewards[i], self.config.FITNESS_EMA_BETA)
 
+    def validate(self):
+        """Validate the model on the validation set."""
+        self.framework.eval()
+        total_val_loss = 0
+        total_mse = 0
+        total_mae = 0
+        num_batches = 0
+        
+        with torch.no_grad():
+            for batch in tqdm(self.val_dataloader, desc="Validating"):
+                framework_output = self.framework(batch)
+                ground_truth = batch["ground_truth"].to(self.config.DEVICE)
+                
+                # Calculate validation loss (prediction only, no PG components)
+                loss_dict = self.loss_fn(framework_output, ground_truth, self.agents, pg_components=None)
+                total_val_loss += loss_dict["total_loss"].item()
+                
+                # Calculate metrics
+                predictions = framework_output["aggregated_prediction"]
+                mse = torch.nn.functional.mse_loss(predictions, ground_truth)
+                mae = torch.nn.functional.l1_loss(predictions, ground_truth)
+                
+                total_mse += mse.item()
+                total_mae += mae.item()
+                num_batches += 1
+        
+        avg_val_loss = total_val_loss / num_batches
+        avg_mse = total_mse / num_batches
+        avg_mae = total_mae / num_batches
+        avg_rmse = avg_mse ** 0.5
+        
+        print(f"\n--- Validation Results ---")
+        print(f"Val Loss: {avg_val_loss:.4f}")
+        print(f"Val MSE: {avg_mse:.4f}")
+        print(f"Val RMSE: {avg_rmse:.4f}")
+        print(f"Val MAE: {avg_mae:.4f}")
+        
+        return {
+            "val_loss": avg_val_loss,
+            "val_mse": avg_mse,
+            "val_rmse": avg_rmse,
+            "val_mae": avg_mae
+        }
+    
     def train_epoch(self, epoch_num):
         self.framework.train()
         total_loss = 0
@@ -110,8 +155,23 @@ class Trainer:
             print(f"- Agent {agent.id}: Fitness={agent.fitness:.4f}, Logic='{agent.logic}'")
 
     def train(self):
-        # (The train loop is the same, but the _evolve_agent_logics call is removed)
         print("--- Starting Training with Policy Gradient ---")
+        best_val_loss = float('inf')
+        
         for epoch in range(self.config.NUM_EPOCHS):
+            # Training
             self.train_epoch(epoch)
+            
+            # Validation
+            val_metrics = self.validate()
+            
+            # Track best model
+            if val_metrics["val_loss"] < best_val_loss:
+                best_val_loss = val_metrics["val_loss"]
+                print(f"✓ New best validation loss: {best_val_loss:.4f}")
+                # TODO: Save best model checkpoint here if needed
+            
+            print("-" * 50)
+        
         print("--- Training Finished ---")
+        print(f"Best Validation Loss: {best_val_loss:.4f}")

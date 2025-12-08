@@ -51,12 +51,18 @@ Our framework is built using PyTorch and the Hugging Face ecosystem.
 
 2.  **Select your mode:** Open `configs/base_config.py` and set the `MODE` variable to either `'GPU_LLAMA'` or `'CPU_DEBUG'` based on your hardware.
 
-3.  **Run the script:**
+3.  **Configure news filtering:** Choose between `'cosine'` (default, no API cost) or `'api'` (requires OpenAI API key) by setting `NEWS_SELECTOR_METHOD` in `configs/base_config.py`.
+
+4.  **Run the script:**
     ```bash
     python train.py
     ```
 
-The script will load your real dataset and proceed with the training and evolution pipeline.
+The script will:
+- Automatically split data into 80% training and 20% validation sets
+- Train the model with evolutionary logic generation
+- Validate after each epoch and track best performance
+- Display metrics: Loss, MSE, RMSE, MAE
 
 ## ⚙️ Configuration and Environment Modes
 

@@ -86,7 +86,7 @@ NEWS_COSINE_TOP_K = 3  # 选择top-k条新闻
 # API方法配置 (仅当NEWS_SELECTOR_METHOD='api'时使用)
 NEWS_API_KEY = os.getenv("OPENAI_API_KEY")  # 从环境变量读取
 NEWS_API_BASE = os.getenv("OPENAI_API_BASE")  # 可选,自定义API base URL
-NEWS_API_MODEL = "gpt-3.5-turbo"  # 使用的OpenAI模型
+NEWS_API_MODEL = "gpt-4"  # 使用的OpenAI模型
 
 # --- Prompt Engineering ---
 PROMPT_TEMPLATE = """Instruction: You are an expert time series forecaster. Your task is to predict the next {future_steps} values of a sequence based on its history and relevant news events. Analyze the combined information to make an accurate forecast.

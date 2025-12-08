@@ -50,12 +50,40 @@ class NewsTimeSeriesDataset(Dataset):
             "ground_truth": ground_truth,
         }
 
-def get_dataloader(data_path, tokenizer, config, batch_size, shuffle=True):
-    """A helper function to create a DataLoader."""
+def get_dataloader(data_path, tokenizer, config, batch_size, shuffle=True, split='train', train_ratio=0.8):
+    """A helper function to create a DataLoader with train/val split support.
+    
+    Args:
+        data_path: Path to the dataset JSON file
+        tokenizer: Tokenizer instance
+        config: Configuration object
+        batch_size: Batch size for the dataloader
+        shuffle: Whether to shuffle the data
+        split: 'train', 'val', or 'all' (default: 'train')
+        train_ratio: Ratio of training data (default: 0.8 for 8:2 split)
+    """
     dataset = NewsTimeSeriesDataset(data_path, tokenizer, config)
-    # A custom collate_fn is not strictly necessary here since we're not padding yet.
-    # The main model logic will handle batching of tokenized inputs.
-    return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    
+    if split == 'all':
+        # Return full dataset
+        return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    
+    # Split dataset into train and validation
+    total_size = len(dataset)
+    train_size = int(total_size * train_ratio)
+    val_size = total_size - train_size
+    
+    train_dataset, val_dataset = torch.utils.data.random_split(
+        dataset, [train_size, val_size],
+        generator=torch.Generator().manual_seed(config.SEED)
+    )
+    
+    if split == 'train':
+        return torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+    elif split == 'val':
+        return torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    else:
+        raise ValueError(f"Invalid split: {split}. Must be 'train', 'val', or 'all'")
 
 
 if __name__ == '__main__':
