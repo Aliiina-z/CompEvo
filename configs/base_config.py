@@ -4,6 +4,22 @@
 import torch
 import os
 
+# --- Multi-GPU Configuration ---
+# Number of GPUs to use for model parallelism
+# Set to 1 for single GPU, or higher for multi-GPU setups (e.g., 70B models)
+NUM_GPUS = 1  # Default: single GPU
+
+# Device map strategy for distributing model across GPUs:
+# - 'auto': Let accelerate/transformers decide layer distribution automatically
+# - 'balanced': Distribute layers evenly across available GPUs
+# - 'sequential': Fill GPUs one by one (first GPU gets filled before second)
+# - None: All layers on single GPU
+DEVICE_MAP_STRATEGY = 'balanced'
+
+# Visible GPU IDs (comma-separated string, e.g., "0,1,2,3")
+# Set to None to use all available GPUs up to NUM_GPUS
+VISIBLE_GPUS = None
+
 # --- MODE SELECTION ---
 # 'GPU_LLAMA' -> For users with a powerful CUDA GPU, runs Llama-3.1-8B with 4-bit quantization.
 # 'CPU_DEBUG' -> For users without a powerful GPU, runs a smaller model (distilgpt2) on CPU.
@@ -16,7 +32,7 @@ SEED = 42
 # --- Environment-Dependent Configurations ---
 if MODE == 'GPU_LLAMA':
     print("--- RUNNING IN 'GPU_LLAMA' MODE ---")
-    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"  # Primary device for multi-GPU
     if DEVICE == 'cpu':
         print("WARNING: 'GPU_LLAMA' mode selected, but no CUDA device found. Falling back to CPU.")
     
@@ -24,7 +40,7 @@ if MODE == 'GPU_LLAMA':
     BASE_LLM_MODEL = "meta-llama/Llama-3.1-8B"  # Paper uses Llama-3.1-8B
     TOKENIZER_PATH = BASE_LLM_MODEL
     USE_QUANTIZATION = True
-    MAX_LENGTH = 4096  # Paper: "input context window is truncated to 4096 tokens"
+    MAX_LENGTH = 8196  # Paper: "input context window is truncated to 4096 tokens"
 
     # --- PEFT (LoRA) Configurations (Paper: Appendix "Hyperparameters") ---
     LORA_RANK = 16  # Paper: r = 16
@@ -37,13 +53,13 @@ if MODE == 'GPU_LLAMA':
     ]
 
     # --- Training Configurations (Paper: Appendix "Hyperparameters") ---
-    BATCH_SIZE = 2
-    LEARNING_RATE = 1e-4  # Paper: "initial learning rate of 1e-4"
-    NUM_EPOCHS = 3  # Paper shows convergence within 2-3 epochs
+    BATCH_SIZE = 4
+    LEARNING_RATE = 1.5e-4  # Paper: "initial learning rate of 1e-4"
+    NUM_EPOCHS = 1  # Paper shows convergence within 2-3 epochs
 
 elif MODE == 'CPU_DEBUG':
     print("--- RUNNING IN 'CPU_DEBUG' MODE ---")
-    DEVICE = "cpu"
+    DEVICE = "cuda"
     
     # --- Model Configurations ---
     BASE_LLM_MODEL = "distilgpt2"
@@ -66,7 +82,7 @@ else:
     raise ValueError(f"Invalid MODE selected: {MODE}. Choose from 'GPU_LLAMA' or 'CPU_DEBUG'.")
 
 # --- Common Configurations (Paper-aligned) ---
-NUM_AGENTS = 10  # Paper: "We set up 10 agents" (Experiments section)
+NUM_AGENTS = 2  # Paper: "We set up 10 agents" (Experiments section)
 WEIGHT_DECAY = 0.01
 
 # --- Agent and Evolution Configurations (Paper: Appendix) ---
@@ -97,7 +113,7 @@ NEWS_COSINE_TOP_K = 3  # 选择top-k条新闻
 
 # API方法配置 (仅当NEWS_SELECTOR_METHOD='api'时使用)
 NEWS_API_KEY = os.getenv("OPENAI_API_KEY")  # 从环境变量读取
-NEWS_API_BASE = os.getenv("OPENAI_API_BASE")  # 可选,自定义API base URL
+NEWS_API_BASE = os.getenv("OPENAI_API_BASE")  # 可选,自定义API base URL 
 NEWS_API_MODEL = "gpt-4"  # 使用的OpenAI模型
 
 # Token限制 (确保完整prompt不超过MAX_LENGTH=4096)
