@@ -1,182 +1,214 @@
-# Improving LLM Agent Performance via Competition-Driven Evolution in News-Driven Time Series Forecasting: Official PyTorch Implementation
+# LLM-EGT Forecaster
 
-This repository contains the official PyTorch implementation for the paper: *"Improving LLM Agent Performance via Competition-Driven Evolution in News-Driven Time Series Forecasting"*.
+PyTorch implementation of a news-driven time series forecasting framework with multiple LLM agents and competition-driven evolutionary training.
 
-Our work introduces a novel multi-agent framework grounded in Evolutionary Game Theory (EGT) to enhance the reasoning and robustness of Large Language Model (LLM) agents for time series forecasting. By simulating a competition-driven evolutionary process, our framework enables agents to self-adaptively develop diverse and effective strategies for filtering news and predicting future trends.
+The framework combines:
 
-[![Paper Abstract](https://img.shields.io/badge/Paper-Abstract-blue)](https://#) <!-- Replace with actual paper link -->
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+- multi-agent LLM forecasting,
+- news-aware signal selection,
+- LoRA/PEFT fine-tuning,
+- evolutionary loss terms for strategy, diversity, pruning, and prediction quality.
 
- <!-- It's highly recommended to add the framework diagram from the paper here -->
+## Installation
 
----
+Clone the repository and enter the project root:
 
-## 🚀 Core Contributions
-
--   **Competition-Driven Evolutionary Framework**: We translate core EGT principles—selection, mutation, and adaptation—into a unified, end-to-end differentiable loss function, allowing LLM agents to evolve through standard gradient-based optimization.
--   **Enhanced Agent Capabilities**: The evolutionary dynamics foster strategic diversity and robustness, significantly improving agents' abilities in **multi-source heterogeneity comprehension** and **robust signal discernment**.
--   **Theoretical Soundness**: We provide theoretical arguments for the stability of our system, suggesting the existence of a Bayesian Nash Equilibrium (BNE) and the potential for achieving a sublinear regret bound.
-
-## 🛠️ Installation
-
-Our framework is built using PyTorch and the Hugging Face ecosystem.
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/llm-egt-forecaster.git
-    cd llm-egt-forecaster
-    ```
-
-2.  **Create a virtual environment (recommended):**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-    ```
-
-3.  **Install dependencies:**
-    Our implementation leverages 4-bit quantization via `bitsandbytes` to make large models like Llama-2-7B accessible on consumer-grade GPUs.
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Hugging Face Authentication (Required for Llama 2):**
-    You will need to have access to Llama 2 models. Please request access on the [Meta Llama 2 model page](https://huggingface.co/meta-llama/Llama-2-7b-hf) and then log in via the command line.
-    ```bash
-    huggingface-cli login
-    ```
-
-## ▶️ Getting Started: Running a Demo
-
-1.  **Prepare your data:** Ensure you have real dataset at `data/real_dataset.json` (see Data Preparation section below).
-
-2.  **Select your mode:** Open `configs/base_config.py` and set the `MODE` variable to either `'GPU_LLAMA'` or `'CPU_DEBUG'` based on your hardware.
-
-3.  **Configure news filtering:** Choose between `'cosine'` (default, no API cost) or `'api'` (requires OpenAI API key) by setting `NEWS_SELECTOR_METHOD` in `configs/base_config.py`.
-
-4.  **Run the script:**
-    ```bash
-    python train.py
-    ```
-
-The script will:
-- Automatically split data into 80% training and 20% validation sets
-- Train the model with evolutionary logic generation
-- Validate after each epoch and track best performance
-- Display metrics: Loss, MSE, RMSE, MAE
-
-## ⚙️ Configuration and Environment Modes
-
-Our framework is designed to be adaptable to different hardware environments. You can easily switch between modes by editing the `MODE` variable in `configs/base_config.py`.
-
-### Modes
--   **`GPU_LLAMA` (Default)**: Recommended for users with a CUDA-enabled NVIDIA GPU (>=16GB VRAM recommended). This mode runs the powerful `Llama-3.1-8B` model with 4-bit quantization for efficient memory usage. It delivers the best performance and is required to fully replicate the paper's results.
-
--   **`CPU_DEBUG`**: For users without a suitable GPU or for quick debugging. This mode runs the smaller `distilgpt2` model on the CPU. It is functionally identical and perfect for verifying the logic of the evolutionary framework, but the forecasting quality will be lower.
-
-### Core Parameters
-In addition to the mode, you can customize:
-
--   `BASE_LLM_MODEL`: The base language model to use.
--   `NUM_AGENTS`: The number of agents in the population.
--   `NUM_EPOCHS`, `BATCH_SIZE`, `LEARNING_RATE`: Standard training hyperparameters.
--   `LAMBDA_DIVERSITY`, `LAMBDA_PRUNING`: Weights for the evolutionary loss components, controlling the balance between exploration and exploitation.
-
-### News Filtering Configuration
-Our framework supports dual-mode news filtering to help agents select relevant news:
-
--   `NEWS_SELECTOR_METHOD`: Choose between `'cosine'` (local embedding-based) or `'api'` (OpenAI-based) filtering.
--   **Cosine Mode** (Default): Uses semantic similarity with SentenceTransformer models. No API costs.
-    -   `NEWS_COSINE_MODEL`: Embedding model (default: `'all-MiniLM-L6-v2'`)
-    -   `NEWS_COSINE_THRESHOLD`: Similarity threshold (default: `0.3`)
-    -   `NEWS_COSINE_TOP_K`: Number of news to select (default: `3`)
--   **API Mode**: Uses OpenAI GPT for intelligent news selection based on agent logic.
-    -   `NEWS_API_KEY`: Set via environment variable `OPENAI_API_KEY`
-    -   `NEWS_API_MODEL`: OpenAI model to use (default: `'gpt-3.5-turbo'`)
-    -   `NEWS_API_BASE`: Optional custom API base URL
-
-## 📂 Project Structure
-
-The repository is organized as follows for clarity and modularity:
-
-```
-llm-egt-forecaster/
-├── configs/             # All hyperparameters and configurations
-├── data/                # Data generation scripts
-│   └── data_generator.py          # Real data loader and converter
-├── docs/                # Documentation
-│   ├── ARCHITECTURE_CN.md         # Chinese architecture docs
-│   └── ARCHITECTURE_EN.md         # English architecture docs
-├── src/                 # Main source code
-│   ├── agent.py           # Definition of the Agent class
-│   ├── dataset.py         # PyTorch Dataset and DataLoader
-│   ├── engine/            # Training and loss computation logic
-│   │   ├── loss.py        # The core EvolutionaryLoss function
-│   │   └── trainer.py     # The main Trainer class
-│   └── models/            # Model architecture definitions
-│       ├── evolutionary_framework.py # The main multi-agent framework
-│       ├── logic_generator.py    # The logic evolution module
-│       └── news_selector.py      # The semantic news filtering module
-└── train.py             # Main entry point to start training
+```bash
+git clone https://github.com/your-username/llm-egt-forecaster.git
+cd llm-egt-forecaster
 ```
 
-## 📈 Data Preparation
+Create and activate a virtual environment:
 
-The framework requires real-world data for training.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
 
-1.  **Prepare your data:** Create a JSON file with instruction/input/output format:
-    ```json
-    {
-      "instruction": "The historical load data is: 1.2, 1.5, 1.8, ... The region...",
-      "input": "Your news text here...",
-      "output": "2.1, 2.3, 2.5, 2.7, 2.9"
-    }
-    ```
+On Windows PowerShell:
 
-2.  **Convert to standard format:** Use the built-in data converter:
-    ```bash
-    python -m llm_egt_forecaster.data.data_generator
-    ```
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-3.  **Place your data:** Put the converted file as `data/real_dataset.json`
+Install dependencies:
 
-4.  **Launch training:** Run `python train.py`
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
 
-### Data Format
-The framework expects data in this standard format:
+If you use `GPU_LLAMA`, make sure you have access to the configured Llama model. If the model is hosted on Hugging Face and requires access approval, run:
+
+```bash
+huggingface-cli login
+```
+
+## Configuration
+
+Edit the active configuration file:
+
+```text
+llm_egt_forecaster/configs/base_config.py
+```
+
+Important options:
+
+```python
+MODE = "GPU_LLAMA"          # or "CPU_DEBUG" for quick local checks
+NUM_AGENTS = 3              # number of LLM agents
+BATCH_SIZE = 4
+NUM_EPOCHS = 3
+NEWS_SELECTOR_METHOD = "cosine"  # "cosine" or "api"
+```
+
+Model and tokenizer paths can be overridden without editing source code:
+
+```bash
+export BASE_LLM_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"
+export TOKENIZER_PATH="$BASE_LLM_MODEL"
+```
+
+For API-based news selection, set an OpenAI-compatible key via environment variable. Do not hard-code secrets in the config file.
+
+```bash
+export OPENAI_API_KEY="your_api_key"
+export OPENAI_API_BASE="https://api.openai.com/v1"   # optional
+export OPENAI_API_MODEL="gpt-4o-mini"                # optional
+```
+
+Windows PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY="your_api_key"
+$env:OPENAI_API_BASE="https://api.openai.com/v1"
+$env:OPENAI_API_MODEL="gpt-4o-mini"
+```
+
+The default `cosine` mode does not require an API key.
+
+## Data Preparation
+
+Training expects a JSON dataset in the package data directory:
+
+```text
+llm_egt_forecaster/data/real_dataset_enhanced.json
+```
+
+If this file is not present, the training script falls back to:
+
+```text
+llm_egt_forecaster/data/real_dataset.json
+```
+
+Each sample should contain:
+
 ```json
 {
-  "time_series": [1.2, 1.5, 1.8, ...],
+  "time_series": [1.0, 1.2, 1.4],
   "candidate_news": [
     {
-      "summary": "Market sentiment is optimistic...",
-      "publication_time": "2024-01-01 09:00:00",
-      "category": "Business"
-    },
-    {
-      "summary": "Heavy storms damaged power lines...",
-      "publication_time": "2024-01-01 10:30:00",
-      "category": "Weather"
+      "summary": "Short news summary.",
+      "publication_time": "2024-01-01 10:00:00",
+      "category": "News"
     }
   ],
-  "ground_truth": [2.1, 2.3, 2.5, 2.7, 2.9]
+  "ground_truth": [2.1, 2.3, 2.5],
+  "metadata": {
+    "date": "2024-01-01",
+    "region": "NSW"
+  }
 }
 ```
 
-**Note**: `candidate_news` should be a list of dictionaries with `summary`, `publication_time`, and `category` fields for optimal news filtering performance.
+The loader uses `time_series`, `candidate_news`, and `ground_truth`. `metadata` is optional but useful for logging and evaluation.
 
-## 📜 Citation
+## Training
 
-If you find our work useful in your research, please consider citing our paper:
+Run training from the repository root:
 
-```bibtex
-@article{your_lastname_2025_improving,
-  title={Improving LLM Agent Performance via Competition-Driven Evolution in News-Driven Time Series Forecasting},
-  author={Your Name and Co-authors},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2025}
-}
+```bash
+python llm_egt_forecaster/train.py
 ```
 
-## acknowledgements
+The training script:
 
-We would like to thank the developers of PyTorch, Hugging Face, and the PEFT library for their invaluable contributions to the open-source community, which made this work possible.
+- reads configuration from `llm_egt_forecaster/configs/base_config.py`,
+- loads `llm_egt_forecaster/data/real_dataset_enhanced.json` or falls back to `real_dataset.json`,
+- splits data into 80% train, 10% validation, and 10% test,
+- saves checkpoints under `checkpoints/`,
+- prints final test metrics after loading the best checkpoint.
+
+To run in the background on a Linux server:
+
+```bash
+mkdir -p llm_egt_forecaster/log
+nohup python -u llm_egt_forecaster/train.py > llm_egt_forecaster/log/train.out 2>&1 &
+tail -f llm_egt_forecaster/log/train.out
+```
+
+## Checkpoint Evaluation
+
+Evaluate a saved checkpoint on the held-out 2026 test set:
+
+```bash
+python llm_egt_forecaster/evaluate_checkpoint.py \
+  --checkpoint checkpoints/best_model.pt \
+  --batch-size 4 \
+  --split all \
+  --news-selector-method cosine \
+  --output-json eval_outputs/eval_2026_100_metrics.json \
+  --save-predictions eval_outputs/eval_2026_100_predictions.json
+```
+
+By default, `evaluate_checkpoint.py` uses:
+
+```text
+llm_egt_forecaster/data/real_dataset_100_2026_test.json
+```
+
+This 100-sample 2026 dataset is intended as a held-out evaluation set for checking generalization and reducing the risk of evaluating on training-period data. You can still pass `--data-path` to evaluate a different JSON file. Relative paths are resolved from the repository root.
+
+The evaluator reports MSE, RMSE, MAE, and MAPE in the original data scale, plus normalized-space metrics.
+
+It can also save per-sample errors for inspection:
+
+```bash
+python llm_egt_forecaster/evaluate_checkpoint.py \
+  --checkpoint checkpoints/best_model.pt \
+  --split all \
+  --sample-errors-json eval_outputs/eval_2026_100_sample_errors.json \
+  --sample-errors-log eval_outputs/eval_2026_100_sample_errors.log
+```
+
+## Project Structure
+
+```text
+llm-egt-forecaster/
+|-- llm_egt_forecaster/
+|   |-- configs/base_config.py        # Active runtime configuration
+|   |-- data/                         # Dataset utilities and local data files
+|   |-- src/
+|   |   |-- dataset.py                # Dataset and dataloader
+|   |   |-- engine/                   # Loss, trainer, and logging
+|   |   `-- models/                   # Framework, logic generator, news selector
+|   |-- train.py                      # Main training entry point
+|   `-- evaluate_checkpoint.py        # Checkpoint evaluation utility
+|-- requirements.txt
+|-- setup.py
+`-- README.md
+```
+
+## Notes Before Publishing
+
+Do not commit local artifacts such as:
+
+- `checkpoints/`
+- `llm_egt_forecaster/log/`
+- `eval_outputs/`
+- large dataset files under `llm_egt_forecaster/data/`
+- local model directories
+- API keys or machine-specific absolute paths
+
+Use environment variables for all secrets.

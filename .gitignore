@@ -24,6 +24,8 @@ env/
 # Model checkpoints and logs
 /checkpoints/
 /logs/
+llm_egt_forecaster/log/
+eval_outputs/
 *.pt
 *.pth
 

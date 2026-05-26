@@ -17,9 +17,10 @@ setup(
         "peft>=0.9.0",
         "accelerate>=0.28.0",
         "bitsandbytes>=0.42.0",
-        "numpy>=1.23.5",
+        "numpy>=1.23.5,<2.0",
         "tqdm>=4.65.0",
         "sentence-transformers>=2.2.2",
+        "openai>=1.0.0",
     ],
     python_requires='>=3.8',
 )

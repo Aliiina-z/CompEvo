@@ -11,8 +11,11 @@ bitsandbytes>=0.42.0  # Optional: for 8-bit/4-bit model quantization to save mem
 safetensors>=0.4.2
 
 # For data handling and progress bars
-numpy>=1.23.5
+numpy>=1.23.5,<2.0
 tqdm>=4.65.0
 
 # For calculating logic diversity (embedding models)
 sentence-transformers>=2.2.2
+
+# For API-based news selection
+openai>=1.0.0
